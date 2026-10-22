@@ -1,0 +1,54 @@
+services:
+  # Database Service (PostgreSQL default port 5432)
+  db:
+    image: postgres:16-alpine
+    container_name: bomberman-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: bomberman_db
+      POSTGRES_USER: bomberman
+      POSTGRES_PASSWORD: bomberman_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bomberman -d bomberman_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Authoritative Backend & SOC Monitoring Service (FastAPI + WebSockets)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bomberman-backend
+    restart: always
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: bomberman_db
+      POSTGRES_USER: bomberman
+      POSTGRES_PASSWORD: bomberman_secret
+      DATABASE_URL: postgresql://bomberman:bomberman_secret@db:5432/bomberman_db
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Frontend Game Client (TypeScript + Vite + Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bomberman-frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
