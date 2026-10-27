@@ -119,6 +119,14 @@ Abre en tu navegador: `http://localhost:5173`
 
 ## 🕹️ Controles del Juego
 
+### 📱 En Celulares y Tablets (Controles Táctiles Integrados):
+- **Cruceta Virtual (D-Pad)**: Toca o desliza el pulgar sobre la cruceta táctil en pantalla (▲ ▼ ◀ ▶) para mover a tu Bomberman con precisión milimétrica.
+- **Botón de Bomba (💣)**: Botón arcade circular grande con vibración háptica al plantar bombas.
+- **Botón de Suministro (📦)**: Solicita objetos o ventajas al servidor con un solo toque.
+- **Botón de Controles (🎮 en el HUD)**: Permite alternar o forzar la visibilidad del mando táctil en pantalla cuando desees.
+- **Interfaz 100% Responsive**: Ajuste automático para celulares en orientación vertical u horizontal, pantallas táctiles y tablets.
+
+### 💻 En Computadora (Teclado):
 | Tecla | Acción |
 |---|---|
 | **W / Flecha Arriba** | Moverse hacia Arriba |

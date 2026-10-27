@@ -26,6 +26,8 @@ class BombermanApp {
   private keysPressed: Set<string> = new Set();
   private lastMoveVector: { dx: number; dy: number; dir: string } = { dx: 0, dy: 0, dir: 'down' };
   private moveInterval: number | null = null;
+  private showMobileControls: boolean = true;
+  private isTouchDevice: boolean = false;
 
   // Audio & Animation states
   private prevBombsCount: number = 0;
@@ -39,6 +41,10 @@ class BombermanApp {
     this.playerId = localStorage.getItem('bm_player_id') || `p_${Math.random().toString(36).substring(2, 8)}`;
     localStorage.setItem('bm_player_id', this.playerId);
     this.nickname = localStorage.getItem('bm_nickname') || `Bomber_${Math.floor(Math.random() * 900 + 100)}`;
+
+    this.isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth <= 900;
+    const savedMobilePref = localStorage.getItem('bm_mobile_controls');
+    this.showMobileControls = savedMobilePref !== null ? savedMobilePref === 'true' : this.isTouchDevice;
 
     this.renderBaseLayout();
     this.setupGlobalControls();
@@ -127,6 +133,7 @@ class BombermanApp {
 
   // --- LOBBY VIEW ---
   public async showLobby() {
+    this.keysPressed.clear();
     this.currentRoomId = null;
     this.disconnectGameWs();
 
@@ -334,6 +341,7 @@ class BombermanApp {
   }
 
   private showRoomLobby() {
+    this.keysPressed.clear();
     const mainView = document.getElementById('main-view')!;
     mainView.innerHTML = `
       <div class="card room-lobby-view">
@@ -393,9 +401,12 @@ class BombermanApp {
             <div class="hud-stat-pill" id="hud-speed">⚡ Velocidad: 3.6</div>
             <div class="hud-stat-pill" id="hud-score">🏆 0 Puntos</div>
           </div>
-          <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="hud-actions-group">
             <div class="match-timer-badge" id="hud-timer">⏱️ 03:00</div>
-            <button class="btn-icon" id="btn-request-supply" style="background: rgba(0, 245, 212, 0.15); border-color: var(--secondary); color: #00f5d4;">📦 Pedir Suministro</button>
+            <button class="btn-icon" id="btn-toggle-touch-controls" style="background: rgba(255, 190, 11, 0.15); border-color: var(--accent-gold); color: #ffd166;" title="Alternar Controles Táctiles">
+              ${this.showMobileControls ? '🎮 Táctil: ON' : '🎮 Táctil: OFF'}
+            </button>
+            <button class="btn-icon" id="btn-request-supply" style="background: rgba(0, 245, 212, 0.15); border-color: var(--secondary); color: #00f5d4;">📦 Suministro</button>
             <button class="btn-icon" id="btn-hud-exit" style="background: rgba(239, 35, 60, 0.2); border-color: var(--danger); color: #ff8591;">🚪 Salir</button>
           </div>
         </div>
@@ -408,7 +419,7 @@ class BombermanApp {
           <div class="game-over-modal" id="player-dead-overlay" style="display: none;">
             <h2 style="color: #ef4444;">💀 ¡HAS SIDO ELIMINADO!</h2>
             <p style="color: #cbd5e1; font-size: 1.05rem;">Te has quedado sin vidas en esta ronda.</p>
-            <div style="display: flex; gap: 14px; margin-top: 14px;">
+            <div style="display: flex; gap: 14px; margin-top: 14px; flex-wrap: wrap; justify-content: center;">
               <button class="btn-primary" id="btn-dead-exit" style="background: linear-gradient(135deg, #ef233c, #9d0208); width: auto; padding: 12px 28px;">🚪 Salir al Menú</button>
               <button class="btn-secondary" id="btn-dead-spectate" style="width: auto; padding: 12px 28px;">👀 Observar Partida</button>
             </div>
@@ -418,18 +429,54 @@ class BombermanApp {
           <div class="game-over-modal" id="game-over-overlay" style="display: none;">
             <h2 id="winner-banner-text">¡VICTORIA!</h2>
             <p id="winner-sub-text" style="color: #cbd5e1; font-size: 1.1rem;"></p>
-            <div style="display: flex; gap: 14px; margin-top: 14px;">
+            <div style="display: flex; gap: 14px; margin-top: 14px; flex-wrap: wrap; justify-content: center;">
               <button class="btn-primary" id="btn-play-again" style="width: auto; padding: 12px 28px;">Volver a la Sala</button>
               <button class="btn-secondary" id="btn-return-lobby" style="width: auto; padding: 12px 28px;">Menú Principal</button>
             </div>
           </div>
         </div>
 
+        <!-- Virtual Touch Gamepad for Mobile -->
+        <div class="virtual-controls-container ${this.showMobileControls ? 'active' : 'hidden'}" id="virtual-gamepad">
+          <!-- D-Pad Directional Controller -->
+          <div class="virtual-dpad-section">
+            <div class="virtual-dpad" id="virtual-dpad">
+              <button type="button" class="v-dpad-btn v-btn-up" data-dir="arrowup" aria-label="Arriba">
+                <span>▲</span>
+              </button>
+              <div class="v-dpad-row">
+                <button type="button" class="v-dpad-btn v-btn-left" data-dir="arrowleft" aria-label="Izquierda">
+                  <span>◀</span>
+                </button>
+                <div class="v-dpad-center"></div>
+                <button type="button" class="v-dpad-btn v-btn-right" data-dir="arrowright" aria-label="Derecha">
+                  <span>▶</span>
+                </button>
+              </div>
+              <button type="button" class="v-dpad-btn v-btn-down" data-dir="arrowdown" aria-label="Abajo">
+                <span>▼</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="virtual-actions-section">
+            <button type="button" class="v-action-btn v-btn-item" id="btn-touch-supply" aria-label="Pedir Objeto">
+              <span class="v-btn-icon">📦</span>
+              <span class="v-btn-label">SUMINISTRO</span>
+            </button>
+            <button type="button" class="v-action-btn v-btn-bomb" id="btn-touch-bomb" aria-label="Poner Bomba">
+              <span class="v-btn-icon">💣</span>
+              <span class="v-btn-label">BOMBA</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Controls Hint Bar -->
         <div class="game-controls-hint">
-          <span><span class="key-badge">W</span> <span class="key-badge">A</span> <span class="key-badge">S</span> <span class="key-badge">D</span> o <span class="key-badge">FLECHAS</span> : Moverse</span>
-          <span><span class="key-badge">ESPACIO</span> : Colocar Bomba</span>
-          <span><span class="key-badge">ESC</span> : Monitor</span>
+          <span><span class="key-badge">W/A/S/D</span> o <span class="key-badge">Cruceta</span>: Moverse</span>
+          <span><span class="key-badge">ESPACIO</span> o <span class="key-badge">💣</span>: Poner Bomba</span>
+          <span><span class="key-badge">ESC</span>: Monitor</span>
         </div>
       </div>
     `;
@@ -437,6 +484,8 @@ class BombermanApp {
     const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
     this.renderer = new GameRenderer(canvas);
     this.renderer.resize(720, 624);
+
+    this.setupVirtualControls();
 
     document.getElementById('btn-request-supply')?.addEventListener('click', async () => {
       audioManager.initOnUserAction();
@@ -503,6 +552,171 @@ class BombermanApp {
       }
     };
     requestAnimationFrame(animate);
+  }
+
+  private setupVirtualControls() {
+    const gamepad = document.getElementById('virtual-gamepad');
+    const dpad = document.getElementById('virtual-dpad');
+    const bombBtn = document.getElementById('btn-touch-bomb');
+    const supplyBtn = document.getElementById('btn-touch-supply');
+    const toggleBtn = document.getElementById('btn-toggle-touch-controls');
+
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        audioManager.initOnUserAction();
+        this.showMobileControls = !this.showMobileControls;
+        localStorage.setItem('bm_mobile_controls', String(this.showMobileControls));
+        if (gamepad) {
+          gamepad.classList.toggle('active', this.showMobileControls);
+          gamepad.classList.toggle('hidden', !this.showMobileControls);
+        }
+        toggleBtn.textContent = this.showMobileControls ? '🎮 Táctil: ON' : '🎮 Táctil: OFF';
+        this.showToast(this.showMobileControls ? 'Controles táctiles activados' : 'Controles táctiles ocultos');
+      });
+    }
+
+    if (bombBtn) {
+      const handleBombPress = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        audioManager.initOnUserAction();
+        this.dropBomb();
+        bombBtn.classList.add('v-pressed');
+        if ('vibrate' in navigator) {
+          try { navigator.vibrate(40); } catch (_) {}
+        }
+      };
+      const handleBombRelease = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        bombBtn.classList.remove('v-pressed');
+      };
+
+      bombBtn.addEventListener('pointerdown', handleBombPress);
+      bombBtn.addEventListener('pointerup', handleBombRelease);
+      bombBtn.addEventListener('pointercancel', handleBombRelease);
+      bombBtn.addEventListener('pointerleave', handleBombRelease);
+    }
+
+    if (supplyBtn) {
+      const handleSupplyPress = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        audioManager.initOnUserAction();
+        document.getElementById('btn-request-supply')?.click();
+        supplyBtn.classList.add('v-pressed');
+        if ('vibrate' in navigator) {
+          try { navigator.vibrate(25); } catch (_) {}
+        }
+      };
+      const handleSupplyRelease = (e: Event) => {
+        e.preventDefault();
+        supplyBtn.classList.remove('v-pressed');
+      };
+
+      supplyBtn.addEventListener('pointerdown', handleSupplyPress);
+      supplyBtn.addEventListener('pointerup', handleSupplyRelease);
+      supplyBtn.addEventListener('pointercancel', handleSupplyRelease);
+      supplyBtn.addEventListener('pointerleave', handleSupplyRelease);
+    }
+
+    if (!dpad) return;
+
+    const dirButtons: Record<string, HTMLElement | null> = {
+      arrowup: dpad.querySelector('.v-btn-up'),
+      arrowdown: dpad.querySelector('.v-btn-down'),
+      arrowleft: dpad.querySelector('.v-btn-left'),
+      arrowright: dpad.querySelector('.v-btn-right'),
+    };
+
+    let activePointerId: number | null = null;
+
+    const setDirectionState = (up: boolean, down: boolean, left: boolean, right: boolean) => {
+      const updateKey = (key: string, active: boolean) => {
+        const btn = dirButtons[key];
+        if (active) {
+          this.keysPressed.add(key);
+          btn?.classList.add('v-pressed');
+        } else {
+          this.keysPressed.delete(key);
+          btn?.classList.remove('v-pressed');
+        }
+      };
+
+      updateKey('arrowup', up);
+      updateKey('arrowdown', down);
+      updateKey('arrowleft', left);
+      updateKey('arrowright', right);
+      this.processMovementInput();
+    };
+
+    const clearAllDirections = () => {
+      ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].forEach((key) => {
+        this.keysPressed.delete(key);
+        dirButtons[key]?.classList.remove('v-pressed');
+      });
+      this.processMovementInput();
+    };
+
+    const handleDpadPointer = (clientX: number, clientY: number) => {
+      const rect = dpad.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      const dx = clientX - centerX;
+      const dy = clientY - centerY;
+      const dist = Math.hypot(dx, dy);
+
+      const deadZone = Math.max(14, rect.width * 0.14);
+      if (dist < deadZone) {
+        clearAllDirections();
+        return;
+      }
+
+      const threshold = deadZone * 0.85;
+      const up = dy < -threshold;
+      const down = dy > threshold;
+      const left = dx < -threshold;
+      const right = dx > threshold;
+
+      setDirectionState(up, down, left, right);
+    };
+
+    dpad.addEventListener('pointerdown', (e: PointerEvent) => {
+      e.preventDefault();
+      audioManager.initOnUserAction();
+      activePointerId = e.pointerId;
+      try {
+        dpad.setPointerCapture(e.pointerId);
+      } catch (_) {}
+      handleDpadPointer(e.clientX, e.clientY);
+    });
+
+    dpad.addEventListener('pointermove', (e: PointerEvent) => {
+      if (activePointerId === e.pointerId) {
+        e.preventDefault();
+        handleDpadPointer(e.clientX, e.clientY);
+      }
+    });
+
+    const handlePointerEnd = (e: PointerEvent) => {
+      if (activePointerId === e.pointerId) {
+        e.preventDefault();
+        activePointerId = null;
+        try {
+          dpad.releasePointerCapture(e.pointerId);
+        } catch (_) {}
+        clearAllDirections();
+      }
+    };
+
+    dpad.addEventListener('pointerup', handlePointerEnd);
+    dpad.addEventListener('pointercancel', handlePointerEnd);
+    dpad.addEventListener('pointerleave', (e: PointerEvent) => {
+      if (!dpad.hasPointerCapture(e.pointerId)) {
+        clearAllDirections();
+      }
+    });
   }
 
   // --- INPUT HANDLING ---
